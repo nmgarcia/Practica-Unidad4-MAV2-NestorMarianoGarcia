@@ -2,6 +2,7 @@
 #include "Avatar.h"
 #include "Box2DHelper.h"
 
+
 class Ragdoll
 {
 private:
@@ -23,11 +24,14 @@ private:
 	b2Body* leftLegBody;
 	Avatar* leftLegAvatar;
 
-	sf::Texture texture;
+	Texture texture;
+
 public:
 	Ragdoll(b2World& phyWorld);
 	void Dibujar(sf::RenderWindow& RW);
 	void Actualizar();
 	void SetAwake(bool awake);
+	b2Vec2 GetChestPosition();
+	void ApplyLinearImpulseToChestCenter(b2Vec2 direction, bool awake);
 };
 

@@ -11,7 +11,6 @@ Game::Game(int ancho, int alto, std::string titulo)
 	frameTime = 1.0f / fps;
 	SetZoom();
 	InitPhysics();
-	ragdoll = new Ragdoll(*phyWorld);
 }
 
 void Game::Loop()
@@ -37,30 +36,47 @@ void Game::UpdatePhysics()
 void Game::DrawGame()
 { 
 	// Dibujamos el suelo
-	sf::RectangleShape groundShape(sf::Vector2f(500, 5));
+	sf::RectangleShape groundShape(sf::Vector2f(200, 5));
 	groundShape.setFillColor(sf::Color::Red);
-	groundShape.setPosition(0, 95);
+	groundShape.setPosition(0, 195);
 	wnd->draw(groundShape);
 
 	// Dibujamos el techo
-	sf::RectangleShape topShape(sf::Vector2f(500, 5));
+	sf::RectangleShape topShape(sf::Vector2f(200, 5));
 	topShape.setFillColor(sf::Color::Green);
-	topShape.setPosition(0, 0);
+	topShape.setPosition(0,0);
 	wnd->draw(topShape);
 
 	// Dibujamos las paredes
-	sf::RectangleShape leftWallShape(sf::Vector2f(5, alto)); // Alto de la ventana
+	sf::RectangleShape leftWallShape(sf::Vector2f(5, 200)); // Alto de la ventana
 	leftWallShape.setFillColor(sf::Color::Blue);
-	leftWallShape.setPosition(0, 100); // X = 100 para que comience donde termina el suelo
+	leftWallShape.setPosition(0, 0); 
 	wnd->draw(leftWallShape);
 
-	sf::RectangleShape rightWallShape(sf::Vector2f(5, alto)); // Alto de la ventana
+	sf::RectangleShape rightWallShape(sf::Vector2f(5, 200)); // Alto de la ventana
 	rightWallShape.setFillColor(sf::Color::Cyan);
-	rightWallShape.setPosition(95, 100);
+	rightWallShape.setPosition(195, 0);
 	wnd->draw(rightWallShape);
+
+	sf::RectangleShape cannonShape(sf::Vector2f(20, 20)); 
+	cannonShape.setFillColor(sf::Color::Yellow);
+	cannonShape.setPosition(20, 175);
+
+	sf::RectangleShape staticShape(sf::Vector2f(10, 10));
+	staticShape.setFillColor(sf::Color::Yellow);
+	staticShape.setPosition(95, 95);
+	wnd->draw(staticShape);
 	
-	ragdoll->Actualizar();
-	ragdoll->Dibujar(*wnd);
+	for (size_t i = 0; i < ragdollList.size(); ++i) {
+		Ragdoll ragdoll = ragdollList[i];
+		ragdoll.Actualizar();
+		ragdoll.Dibujar(*wnd);
+	}
+
+	wnd->draw(cannonShape);
+	ballAvatar->Actualizar();
+	ballAvatar->Dibujar(*wnd);
+
 }
 
 void Game::DoEvents()
@@ -74,14 +90,21 @@ void Game::DoEvents()
 			case Event::Closed:
 				wnd->close();
 				break;
+			case Event::MouseButtonPressed:
+				if (evt.key.code == Mouse::Button::Left)
+				{
+					Vector2i mousePos = Mouse::getPosition(*wnd);
+					Vector2f worldMousePos = wnd->mapPixelToCoords(mousePos);
+
+					Ragdoll* ragdoll = new Ragdoll(*phyWorld);
+					b2Vec2 direction = b2Vec2(worldMousePos.x - ragdoll->GetChestPosition().x, worldMousePos.y - ragdoll->GetChestPosition().y); //Nuestro ragdoll siempre aparecera en el mismo lugar
+
+					ragdoll->ApplyLinearImpulseToChestCenter(b2Vec2(direction.x * 100.0f, direction.y * 100.0f), true);
+					ragdollList.push_back(*ragdoll);
+				}
+				break;
 		}
 	}
-
-	// Movemos el cuerpo para demostrar el funcionamiento del ragdoll
-	ragdoll->SetAwake(true);
-
-	/*if (Keyboard::isKeyPressed(Keyboard::Up))
-		chestBody->ApplyForceToCenter(b2Vec2(0.0f ,-5000.0f),true);*/
 	
 }
 
@@ -96,37 +119,43 @@ void Game::SetZoom()
 {
 	View camara;
 	// Posicion del view
-	camara.setSize(100.0f, 100.0f); //Aqui podemos ver que no es la misma relacion de aspecto por lo que podriamos hacer 100*600/800 para obtener una relacion de aspecto igual a la del window
-	camara.setCenter(50.0f, 50.0f);
+	camara.setSize(200.0f, 200.0f); //Puse la camara mas grande para no jugar con la escala del ragdoll
+	camara.setCenter(100.0f, 100.0f);
 	wnd->setView(camara); //asignamos la camara
 }
 
 void Game::InitPhysics()
 {
-	// Inicializamos el mundo con la gravedad por defecto
 	phyWorld = new b2World(b2Vec2(0.0f, 9.8f));
-
-	//MyContactListener* l= new MyContactListener();
-	//phyWorld->SetContactListener(l);
-	// Creamos el renderer de debug y le seteamos las banderas para que dibuje TODO
 	debugRender = new SFMLRenderer(wnd);
-	//debugRender->SetFlags(UINT_MAX);
 	phyWorld->SetDebugDraw(debugRender);
 
 	// Creamos un piso, techo y paredes
-	b2Body* topBody = Box2DHelper::CreateRectangularStaticBody(phyWorld, 100, 10);
-	topBody->SetTransform(b2Vec2(50.0f, 0.0f), 0.0f);
+	b2Body* topBody = Box2DHelper::CreateRectangularStaticBody(phyWorld, 200, 5);
+	topBody->SetTransform(b2Vec2(100, 2.5f), 0.0f);
 
-	b2Body* groundBody = Box2DHelper::CreateRectangularStaticBody(phyWorld, 100, 10);
-	groundBody->SetTransform(b2Vec2(50.0f, 100.0f), 0.0f);
+	b2Body* groundBody = Box2DHelper::CreateRectangularStaticBody(phyWorld, 200, 5);
+	groundBody->SetTransform(b2Vec2(100, 197.5), 0.0f);
 	groundBody->GetFixtureList()->SetFriction(0.2f);
 
-	b2Body* leftWallBody = Box2DHelper::CreateRectangularStaticBody(phyWorld, 10, 100);
-	leftWallBody->SetTransform(b2Vec2(0.0f, 50.0f), 0.0f);
+	b2Body* leftWallBody = Box2DHelper::CreateRectangularStaticBody(phyWorld, 5, 200);
+	leftWallBody->SetTransform(b2Vec2(2.5f, 100), 0.0f);
 
-	b2Body* rightWallBody = Box2DHelper::CreateRectangularStaticBody(phyWorld, 10, 100);
-	rightWallBody->SetTransform(b2Vec2(100.0f, 50.0f), 0.0f);
+	b2Body* rightWallBody = Box2DHelper::CreateRectangularStaticBody(phyWorld, 5, 200);
+	rightWallBody->SetTransform(b2Vec2(197.5, 100), 0.0f);
 
+	
+	b2Body* staticBody = Box2DHelper::CreateRectangularStaticBody(phyWorld, 10, 10);
+	staticBody->SetTransform(b2Vec2(100, 100), 0.0f);
+
+	dynamicBallBody = Box2DHelper::CreateCircularDynamicBody(phyWorld, 5, 1.0f, 0.5, 0.5f);
+	dynamicBallBody->SetTransform(b2Vec2(100.0f, 90.0f), 0.0f);
+
+	// Carga la textura de la pelota para el avatar
+	texturaPelota.loadFromFile("Pelota.png");
+
+	// Inicializa el avatar del jugador con el cuerpo físico creado y la textura de la pelota
+	ballAvatar = new Avatar(dynamicBallBody, new sf::Sprite(texturaPelota));
 }
 
 Game::~Game(void)

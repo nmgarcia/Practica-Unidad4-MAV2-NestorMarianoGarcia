@@ -5,6 +5,8 @@
 #include "Ragdoll.h"
 
 using namespace sf;
+using namespace std;
+
 class Game
 {
 private:
@@ -15,17 +17,18 @@ private:
 	Color clearColor;
 
 	// Objetos de box2d
-	b2World *phyWorld;
-	SFMLRenderer *debugRender;
+	b2World* phyWorld;
+	SFMLRenderer* debugRender;
 
 	//tiempo de frame
 	float frameTime;
 	int fps;
 
-	// Cuerpo de box2d	
-	Ragdoll* ragdoll;
-	
-	sf::Texture texturaCaja;
+	vector<Ragdoll> ragdollList;
+	b2Body* dynamicBallBody;
+	Avatar* ballAvatar;
+	Texture texturaPelota;
+
 
 public:
 
